@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CertGames Architecture - Sunburst</title>
+    <title>CertGames Architecture</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         * {
@@ -13,25 +13,46 @@
         }
 
         body {
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            background: #0a0e27;
-            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #1a1a1a;
+            color: #e8e8e8;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
         }
 
         #container {
             position: relative;
             width: 100%;
-            height: 100%;
+            height: 100vh;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            background: #2a2a2a;
+            border: 1px solid #404040;
+            color: #e8e8e8;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #333;
+            border-color: #505050;
         }
 
         #title {
             position: absolute;
-            top: 30px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
@@ -39,100 +60,104 @@
         }
 
         #title h1 {
-            color: #00ff9d;
-            font-size: 32px;
-            margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+            color: #e8e8e8;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
         }
 
         #title p {
             color: #888;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 400;
         }
 
         #stats {
             position: absolute;
-            top: 30px;
-            right: 30px;
-            background: rgba(15, 20, 40, 0.95);
+            top: 20px;
+            right: 20px;
+            background: #2a2a2a;
             padding: 20px;
-            border-radius: 10px;
-            border: 2px solid #00ff9d;
+            border-radius: 6px;
+            border: 1px solid #404040;
             font-size: 13px;
             z-index: 10;
-            min-width: 200px;
+            min-width: 180px;
         }
 
         .stat {
             display: flex;
             justify-content: space-between;
-            margin: 8px 0;
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(0, 255, 157, 0.2);
+            margin: 10px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #333;
         }
 
         .stat:last-child {
             border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
         }
 
         .stat-label {
-            color: #00ff9d;
-            font-weight: bold;
+            color: #aaa;
+            font-weight: 500;
         }
 
         .stat-value {
             color: #fff;
+            font-weight: 600;
         }
 
         #breadcrumb {
             position: absolute;
-            bottom: 30px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(15, 20, 40, 0.95);
-            padding: 15px 30px;
-            border-radius: 10px;
-            border: 2px solid #00ff9d;
-            font-size: 14px;
+            background: #2a2a2a;
+            padding: 12px 24px;
+            border-radius: 6px;
+            border: 1px solid #404040;
+            font-size: 13px;
             text-align: center;
             z-index: 10;
             max-width: 80%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            font-family: 'Courier New', monospace;
+            color: #ccc;
         }
 
         #tooltip {
             position: absolute;
-            background: rgba(0, 0, 0, 0.95);
-            color: #00ff9d;
-            padding: 12px 18px;
-            border-radius: 8px;
-            border: 2px solid #00ff9d;
-            font-size: 13px;
+            background: #2a2a2a;
+            color: #e8e8e8;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid #404040;
+            font-size: 12px;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 0.15s;
             z-index: 100;
-            max-width: 300px;
+            max-width: 280px;
         }
 
         .legend {
             position: absolute;
-            bottom: 30px;
-            left: 30px;
-            background: rgba(15, 20, 40, 0.95);
-            padding: 20px;
-            border-radius: 10px;
-            border: 2px solid #00ff9d;
+            bottom: 20px;
+            left: 20px;
+            background: #2a2a2a;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid #404040;
             font-size: 12px;
             z-index: 10;
         }
 
         .legend h3 {
-            color: #00ff9d;
+            color: #e8e8e8;
             margin-bottom: 12px;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .legend-item {
@@ -142,46 +167,52 @@
         }
 
         .legend-color {
-            width: 18px;
-            height: 18px;
-            border-radius: 3px;
-            margin-right: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            margin-right: 8px;
+            border: 1px solid #404040;
         }
 
         path {
             cursor: pointer;
-            stroke: #0a0e27;
-            stroke-width: 2;
+            stroke: #1a1a1a;
+            stroke-width: 1.5;
+            transition: opacity 0.15s;
         }
 
         path:hover {
-            opacity: 0.8;
+            opacity: 0.85;
         }
 
         .center-text {
-            font-size: 16px;
-            fill: #00ff9d;
+            font-size: 14px;
+            fill: #e8e8e8;
             text-anchor: middle;
             pointer-events: none;
-            font-weight: bold;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
     <div id="container">
+        <div id="controls">
+            <button class="control-btn" onclick="resetZoom()">Reset View</button>
+            <button class="control-btn" onclick="expandAll()">Expand All</button>
+        </div>
+
         <div id="title">
-            <h1>🎮 CertGames Architecture</h1>
-            <p>Click any segment to zoom • Hover for details</p>
+            <h1>CertGames Architecture</h1>
+            <p>Click segments to zoom • Hover for details</p>
         </div>
 
         <div id="stats">
             <div class="stat">
-                <span class="stat-label">Total Files</span>
+                <span class="stat-label">Files</span>
                 <span class="stat-value" id="file-count">0</span>
             </div>
             <div class="stat">
-                <span class="stat-label">Directories</span>
+                <span class="stat-label">Folders</span>
                 <span class="stat-value" id="folder-count">0</span>
             </div>
             <div class="stat">
@@ -189,7 +220,7 @@
                 <span class="stat-value" id="max-depth">0</span>
             </div>
             <div class="stat">
-                <span class="stat-label">Python Files</span>
+                <span class="stat-label">Python</span>
                 <span class="stat-value" id="py-count">0</span>
             </div>
             <div class="stat">
@@ -213,19 +244,19 @@
     </div>
 
     <script>
-        // Color scheme
+        // Professional color scheme
         const colors = {
-            directory: '#00ff9d',
-            python: '#3572A5',
+            directory: '#6c9bcf',
+            python: '#4b8bbe',
             typescript: '#3178c6',
-            javascript: '#f7df1e',
-            tsx: '#61dafb',
-            jsx: '#61dafb',
-            css: '#563d7c',
-            scss: '#c6538c',
-            html: '#e34c26',
-            json: '#ffca28',
-            config: '#6e7681',
+            javascript: '#e4b93c',
+            tsx: '#5ed3f3',
+            jsx: '#5ed3f3',
+            css: '#7952b3',
+            scss: '#c76494',
+            html: '#e44d26',
+            json: '#e6b31e',
+            config: '#6a737d',
             default: '#8b949e'
         };
 
@@ -244,12 +275,11 @@
             'toml': 'config',
             'ini': 'config',
             'txt': 'config',
-            'md': 'config',
-            'Makefile': 'config'
+            'md': 'config'
         };
 
         function getFileExtension(filename) {
-            if (filename === 'Makefile' || filename === 'Dockerfile') return 'config';
+            if (filename === 'Makefile' || filename.startsWith('Dockerfile')) return 'config';
             const parts = filename.split('.');
             return parts.length > 1 ? parts[parts.length - 1] : '';
         }
@@ -295,11 +325,11 @@
         function createLegend() {
             const legendItems = d3.select('#legend-items');
             const items = [
-                { label: 'Directory', color: colors.directory },
+                { label: 'Directories', color: colors.directory },
                 { label: 'Python', color: colors.python },
                 { label: 'TypeScript', color: colors.typescript },
-                { label: 'React/TSX', color: colors.tsx },
-                { label: 'CSS/SCSS', color: colors.scss },
+                { label: 'React', color: colors.tsx },
+                { label: 'Styles', color: colors.scss },
                 { label: 'Config', color: colors.config },
                 { label: 'Other', color: colors.default }
             ];
@@ -313,11 +343,21 @@
             });
         }
 
+        let globalRoot, globalPath, globalSvg, globalArc;
+
+        window.resetZoom = function() {
+            clicked(null, globalRoot);
+        }
+
+        window.expandAll = function() {
+            clicked(null, globalRoot);
+        }
+
         // Load and visualize
         d3.json('tree.json').then(data => {
             const width = window.innerWidth;
             const height = window.innerHeight;
-            const radius = Math.min(width, height) / 2 - 100;
+            const radius = Math.min(width, height) * 0.45; // Increased from previous
 
             const svg = d3.select('#container')
                 .append('svg')
@@ -326,6 +366,8 @@
                 .append('g')
                 .attr('transform', `translate(${width / 2},${height / 2})`);
 
+            globalSvg = svg;
+
             const partition = d3.partition()
                 .size([2 * Math.PI, radius]);
 
@@ -333,9 +375,9 @@
                 .sum(d => d.type === 'file' ? 1 : 0)
                 .sort((a, b) => b.value - a.value);
 
+            globalRoot = root;
             partition(root);
 
-            // Calculate stats
             const stats = calculateStats(root);
             d3.select('#file-count').text(stats.files);
             d3.select('#folder-count').text(stats.folders);
@@ -349,10 +391,12 @@
             const arc = d3.arc()
                 .startAngle(d => d.x0)
                 .endAngle(d => d.x1)
-                .padAngle(d => Math.min((d.x1 - d.x0) / 2, 0.005))
+                .padAngle(d => Math.min((d.x1 - d.x0) / 2, 0.003))
                 .padRadius(radius / 2)
                 .innerRadius(d => d.y0)
-                .outerRadius(d => d.y1 - 1);
+                .outerRadius(d => d.y1);
+
+            globalArc = arc;
 
             const tooltip = d3.select('#tooltip');
             const breadcrumb = d3.select('#breadcrumb');
@@ -363,15 +407,19 @@
                 .attr('fill', getNodeColor)
                 .attr('d', arc)
                 .on('mouseover', function(event, d) {
-                    d3.select(this).style('opacity', 0.8);
+                    d3.select(this).style('opacity', 0.85);
+                    
+                    let content = `<strong>${d.data.name}</strong><br/>`;
+                    content += `Type: ${d.data.type}<br/>`;
+                    content += `Depth: ${d.depth}`;
+                    
+                    if (d.data.type === 'directory' && d.children) {
+                        content += `<br/>Items: ${d.children.length}`;
+                    }
+                    
                     tooltip
                         .style('opacity', 1)
-                        .html(`
-                            <strong>${d.data.name}</strong><br/>
-                            Type: ${d.data.type}<br/>
-                            Depth: ${d.depth}<br/>
-                            ${d.data.type === 'directory' ? `Children: ${d.children ? d.children.length : 0}` : ''}
-                        `)
+                        .html(content)
                         .style('left', (event.pageX + 15) + 'px')
                         .style('top', (event.pageY - 15) + 'px');
                 })
@@ -381,7 +429,8 @@
                 })
                 .on('click', clicked);
 
-            // Center text
+            globalPath = path;
+
             const centerText = svg.append('text')
                 .attr('class', 'center-text')
                 .attr('dy', '0.35em')
@@ -390,14 +439,13 @@
             function clicked(event, p) {
                 centerText.text(p.data.name);
                 
-                // Build breadcrumb path
-                let path = [];
+                let pathArray = [];
                 let node = p;
                 while (node) {
-                    path.unshift(node.data.name);
+                    pathArray.unshift(node.data.name);
                     node = node.parent;
                 }
-                breadcrumb.text(path.join(' / '));
+                breadcrumb.text(pathArray.join(' / '));
 
                 root.each(d => d.target = {
                     x0: Math.max(0, Math.min(1, (d.x0 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
