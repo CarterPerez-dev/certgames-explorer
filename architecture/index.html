@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertGames Architecture Explorer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: #0a0e27;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 20, 40, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #00ff9d;
+            max-width: 300px;
+            z-index: 10;
+        }
+
+        #info h1 {
+            color: #00ff9d;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        #info p {
+            font-size: 12px;
+            line-height: 1.6;
+            margin-bottom: 5px;
+        }
+
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 20, 40, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff9d;
+            font-size: 12px;
+            z-index: 10;
+        }
+
+        .stat {
+            margin: 5px 0;
+        }
+
+        .stat-label {
+            color: #00ff9d;
+            font-weight: bold;
+        }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            color: #00ff9d;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #00ff9d;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            max-width: 400px;
+            word-wrap: break-word;
+        }
+
+        .node {
+            cursor: pointer;
+            stroke-width: 2px;
+        }
+
+        .link {
+            stroke: rgba(0, 255, 157, 0.2);
+            stroke-width: 1px;
+        }
+
+        .node text {
+            font-size: 10px;
+            pointer-events: none;
+            fill: #e0e0e0;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 20, 40, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff9d;
+            font-size: 11px;
+            z-index: 10;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="info">
+            <h1>🎮 CertGames Explorer</h1>
+            <p><strong>Drag</strong> nodes to move them</p>
+            <p><strong>Scroll</strong> to zoom</p>
+            <p><strong>Hover</strong> for file paths</p>
+            <p><strong>Click</strong> to highlight</p>
+        </div>
+
+        <div id="stats">
+            <div class="stat"><span class="stat-label">Total Files:</span> <span id="file-count">0</span></div>
+            <div class="stat"><span class="stat-label">Total Folders:</span> <span id="folder-count">0</span></div>
+            <div class="stat"><span class="stat-label">Max Depth:</span> <span id="max-depth">0</span></div>
+            <div class="stat"><span class="stat-label">Python Files:</span> <span id="py-count">0</span></div>
+            <div class="stat"><span class="stat-label">TypeScript:</span> <span id="ts-count">0</span></div>
+            <div class="stat"><span class="stat-label">Configs:</span> <span id="config-count">0</span></div>
+        </div>
+
+        <div class="legend" id="legend"></div>
+        <div id="tooltip"></div>
+    </div>
+
+    <script>
+        // Color scheme
+        const colors = {
+            directory: '#00ff9d',
+            python: '#3572A5',
+            typescript: '#3178c6',
+            javascript: '#f7df1e',
+            tsx: '#61dafb',
+            jsx: '#61dafb',
+            css: '#563d7c',
+            scss: '#c6538c',
+            html: '#e34c26',
+            json: '#ffca28',
+            config: '#6e7681',
+            default: '#8b949e'
+        };
+
+        const fileTypeMap = {
+            'py': 'python',
+            'ts': 'typescript',
+            'tsx': 'tsx',
+            'js': 'javascript',
+            'jsx': 'jsx',
+            'css': 'css',
+            'scss': 'scss',
+            'html': 'html',
+            'json': 'json',
+            'yml': 'config',
+            'yaml': 'config',
+            'toml': 'config',
+            'ini': 'config',
+            'md': 'config'
+        };
+
+        // Convert tree to graph
+        function treeToGraph(node, parent = null, path = '', depth = 0) {
+            const nodes = [];
+            const links = [];
+            
+            const currentPath = path ? `${path}/${node.name}` : node.name;
+            const nodeData = {
+                id: currentPath,
+                name: node.name,
+                type: node.type,
+                path: currentPath,
+                depth: depth
+            };
+            
+            nodes.push(nodeData);
+            
+            if (parent) {
+                links.push({
+                    source: parent,
+                    target: currentPath
+                });
+            }
+            
+            if (node.children) {
+                node.children.forEach(child => {
+                    const { nodes: childNodes, links: childLinks } = treeToGraph(
+                        child, 
+                        currentPath, 
+                        currentPath,
+                        depth + 1
+                    );
+                    nodes.push(...childNodes);
+                    links.push(...childLinks);
+                });
+            }
+            
+            return { nodes, links };
+        }
+
+        function getFileExtension(filename) {
+            const parts = filename.split('.');
+            return parts.length > 1 ? parts[parts.length - 1] : '';
+        }
+
+        function getNodeColor(node) {
+            if (node.type === 'directory') return colors.directory;
+            
+            const ext = getFileExtension(node.name);
+            const fileType = fileTypeMap[ext] || 'default';
+            return colors[fileType] || colors.default;
+        }
+
+        function calculateStats(nodes) {
+            const stats = {
+                files: 0,
+                folders: 0,
+                maxDepth: 0,
+                py: 0,
+                ts: 0,
+                configs: 0
+            };
+
+            nodes.forEach(node => {
+                if (node.type === 'directory') {
+                    stats.folders++;
+                } else {
+                    stats.files++;
+                    const ext = getFileExtension(node.name);
+                    if (ext === 'py') stats.py++;
+                    if (ext === 'ts' || ext === 'tsx') stats.ts++;
+                    if (['yml', 'yaml', 'json', 'toml', 'ini'].includes(ext)) stats.configs++;
+                }
+                stats.maxDepth = Math.max(stats.maxDepth, node.depth);
+            });
+
+            return stats;
+        }
+
+        function createLegend() {
+            const legend = d3.select('#legend');
+            const items = [
+                { label: 'Directory', color: colors.directory },
+                { label: 'Python', color: colors.python },
+                { label: 'TypeScript', color: colors.typescript },
+                { label: 'React', color: colors.tsx },
+                { label: 'CSS/SCSS', color: colors.scss },
+                { label: 'Config', color: colors.config }
+            ];
+
+            items.forEach(item => {
+                const div = legend.append('div').attr('class', 'legend-item');
+                div.append('div')
+                    .attr('class', 'legend-color')
+                    .style('background-color', item.color);
+                div.append('span').text(item.label);
+            });
+        }
+
+        // Load and visualize
+        d3.json('tree.json').then(data => {
+            const { nodes, links } = treeToGraph(data);
+            const stats = calculateStats(nodes);
+
+            // Update stats
+            d3.select('#file-count').text(stats.files);
+            d3.select('#folder-count').text(stats.folders);
+            d3.select('#max-depth').text(stats.maxDepth);
+            d3.select('#py-count').text(stats.py);
+            d3.select('#ts-count').text(stats.ts);
+            d3.select('#config-count').text(stats.configs);
+
+            createLegend();
+
+            // Setup SVG
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            const svg = d3.select('#container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const g = svg.append('g');
+
+            // Zoom
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+
+            // Force simulation
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(50))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(20));
+
+            // Links
+            const link = g.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('class', 'link');
+
+            // Nodes
+            const node = g.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .join('circle')
+                .attr('class', 'node')
+                .attr('r', d => d.type === 'directory' ? 8 : 5)
+                .attr('fill', getNodeColor)
+                .attr('stroke', d => d.type === 'directory' ? '#00ff9d' : 'rgba(255,255,255,0.3)')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            // Tooltip
+            const tooltip = d3.select('#tooltip');
+
+            node.on('mouseover', (event, d) => {
+                tooltip
+                    .style('opacity', 1)
+                    .html(`
+                        <strong>${d.name}</strong><br/>
+                        <span style="color: #888">${d.path}</span><br/>
+                        Type: ${d.type}<br/>
+                        Depth: ${d.depth}
+                    `)
+                    .style('left', (event.pageX + 15) + 'px')
+                    .style('top', (event.pageY - 15) + 'px');
+            })
+            .on('mouseout', () => {
+                tooltip.style('opacity', 0);
+            })
+            .on('click', (event, d) => {
+                // Highlight connected nodes
+                const connectedLinks = links.filter(l => l.source.id === d.id || l.target.id === d.id);
+                const connectedNodeIds = new Set(connectedLinks.flatMap(l => [l.source.id, l.target.id]));
+                
+                node.style('opacity', n => connectedNodeIds.has(n.id) ? 1 : 0.2);
+                link.style('opacity', l => l.source.id === d.id || l.target.id === d.id ? 1 : 0.1);
+                
+                setTimeout(() => {
+                    node.style('opacity', 1);
+                    link.style('opacity', 1);
+                }, 3000);
+            });
+
+            // Update positions
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+        });
+    </script>
+</body>
+</html>
